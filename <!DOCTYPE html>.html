@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XC time chart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F6F0;
+    --paper-2:#EDEFE6;
+    --pine:#1F3A2E;
+    --pine-2:#2C4E3B;
+    --flag:#E2570F;
+    --flag-dim:#F2A57C;
+    --ink:#20241D;
+    --ink-soft:#5C6459;
+    --line:#D7D9CB;
+    --line-strong:#B9BDA9;
+    --good:#3E7D4F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Barlow', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:28px 20px 80px;
+  }
+  header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:16px;
+    border-bottom:3px solid var(--pine);
+    padding-bottom:16px;
+    margin-bottom:20px;
+  }
+  .title-block h1{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:34px;
+    line-height:1;
+    margin:0 0 4px;
+    color:var(--pine);
+    letter-spacing:0.2px;
+  }
+  .title-block p{
+    margin:0;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .flag-dot{
+    display:inline-block;
+    width:9px;height:9px;
+    background:var(--flag);
+    border-radius:50%;
+    margin-right:8px;
+    position:relative;
+    top:-2px;
+  }
+  .distance-box{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    background:var(--pine);
+    color:var(--paper);
+    padding:10px 16px;
+    border-radius:2px;
+  }
+  .distance-box label{
+    font-family:'Barlow Condensed', sans-serif;
+    font-size:14px;
+    letter-spacing:0.3px;
+    color:var(--flag-dim);
+  }
+  .distance-box input{
+    width:64px;
+    background:transparent;
+    border:none;
+    border-bottom:1px solid rgba(255,255,255,0.4);
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:18px;
+    padding:2px 2px;
+    text-align:right;
+  }
+  .distance-box input:focus{outline:none;border-bottom-color:var(--flag);}
+  .distance-box span.unit{font-size:13px;color:rgba(255,255,255,0.75);}
+
+  .sync-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .sync-row button{
+    background:none;
+    border:1px solid var(--line-strong);
+    color:var(--ink-soft);
+    font-family:'Barlow', sans-serif;
+    font-size:12px;
+    padding:5px 10px;
+    border-radius:2px;
+    cursor:pointer;
+  }
+  .sync-row button:hover{border-color:var(--pine);color:var(--pine);}
+  .dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--good);margin-right:5px;position:relative;top:-1px;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    background:#fff;
+    box-shadow:0 1px 0 var(--line);
+  }
+  thead th{
+    font-family:'Barlow Condensed', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:0.3px;
+    color:var(--paper);
+    background:var(--pine-2);
+    text-align:left;
+    padding:10px 12px;
+    position:sticky;
+    top:0;
+  }
+  thead th.num{text-align:right;}
+  tbody tr{border-bottom:1px solid var(--line);}
+  tbody tr:hover{background:#FAFAF4;}
+  tbody tr.leader{background:#FBF3EC;}
+  tbody tr.leader:hover{background:#F8EBDF;}
+  td{
+    padding:8px 12px;
+    vertical-align:middle;
+  }
+  td.rank{
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--ink-soft);
+    font-size:13px;
+    width:30px;
+  }
+  td input.name-input{
+    width:100%;
+    border:none;
+    border-bottom:1px solid transparent;
+    background:transparent;
+    font-family:'Barlow', sans-serif;
+    font-size:15px;
+    color:var(--ink);
+    padding:4px 2px;
+  }
+  td input.name-input:focus{outline:none;border-bottom-color:var(--flag);}
+  td input.name-input::placeholder{color:#B7BCA9;}
+
+  .time-cell{font-family:'IBM Plex Mono', monospace; font-size:15px;}
+  .time-cell input{
+    width:92px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    border:none;
+    border-bottom:1px solid var(--line-strong);
+    background:transparent;
+    padding:4px 2px;
+    color:var(--pine);
+    font-weight:600;
+  }
+  .time-cell input:focus{outline:none;border-bottom-color:var(--flag);}
+  .time-cell.readonly{
+    color:var(--ink);
+    font-weight:500;
+  }
+  .interval-label{
+    font-family:'Barlow Condensed', sans-serif;
+    font-size:12px;
+    letter-spacing:0.5px;
+    color:var(--flag);
+    text-transform:lowercase;
+  }
+  td.pace{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    text-align:right;
+    white-space:nowrap;
+  }
+  td.pace .unit{
+    font-family:'Barlow', sans-serif;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-left:3px;
+  }
+  td.remove{width:32px; text-align:center;}
+  td.remove button{
+    background:none;
+    border:none;
+    color:var(--line-strong);
+    font-size:16px;
+    cursor:pointer;
+    line-height:1;
+    padding:4px;
+  }
+  td.remove button:hover{color:var(--flag);}
+
+  .add-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:12px;
+    background:#fff;
+    border-top:1px dashed var(--line-strong);
+  }
+  .add-row button{
+    font-family:'Barlow Condensed', sans-serif;
+    font-size:14px;
+    letter-spacing:0.3px;
+    background:var(--flag);
+    color:#fff;
+    border:none;
+    padding:9px 18px;
+    border-radius:2px;
+    cursor:pointer;
+  }
+  .add-row button:hover{background:#C94A0C;}
+
+  footer{
+    margin-top:18px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    line-height:1.6;
+  }
+
+  @media (max-width:560px){
+    .wrap{padding:20px 12px 60px;}
+    .title-block h1{font-size:26px;}
+    table, thead, tbody, th, td, tr{display:block;}
+    thead{display:none;}
+    tbody tr{
+      border:1px solid var(--line);
+      border-radius:3px;
+      margin-bottom:10px;
+      padding:8px 4px;
+      position:relative;
+    }
+    td{padding:6px 10px; display:flex; justify-content:space-between; align-items:center;}
+    td::before{
+      content:attr(data-label);
+      font-family:'Barlow Condensed', sans-serif;
+      font-size:11px;
+      color:var(--ink-soft);
+      letter-spacing:0.3px;
+      margin-right:10px;
+      flex-shrink:0;
+    }
+    td.rank{display:none;}
+    td.remove{position:absolute; top:4px; right:4px; padding:0;}
+    td.remove::before{content:none;}
+    td.name-cell input{text-align:right;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <h1><span class="flag-dot"></span>Cross Country Time chart</h1>
+      <p>Input first runner's time and delta</p>
+    </div>
+    <div class="distance-box">
+      <label for="distance-input">Race Distance</label>
+      <input id="distance-input" type="text" inputmode="decimal" value="5.0">
+      <span class="unit">km</span>
+    </div>
+  </header>
+
+  <div class="sync-row">
+    <span id="sync-status"><span class="dot"></span>Data is not shared</span>
+    <button id="refresh-btn" type="button">Refresh</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px;"></th>
+        <th>Runner name</th>
+        <th class="num">Total Time</th>
+        <th class="num">Delta</th>
+        <th class="num">Avg. Pace (Min/Km)</th>
+        <th style="width:32px;"></th>
+      </tr>
+    </thead>
+    <tbody id="runner-body"></tbody>
+  </table>
+
+  <div class="add-row">
+    <button id="add-runner-btn" type="button">＋ Add Runner</button>
+  </div>
+
+  <footer>
+    Input Format：minute : second（decimal available, Ex. 18:32.5 / 0:08）Average Pace is two significant figures, min/km style<br>
+    Your changes is saved automatically. Reload to Clear Data
+    
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'xc-race-board';
+  const body = document.getElementById('runner-body');
+  const distanceInput = document.getElementById('distance-input');
+  const syncStatus = document.getElementById('sync-status');
+  const refreshBtn = document.getElementById('refresh-btn');
+  const addBtn = document.getElementById('add-runner-btn');
+
+  let state = {
+    distanceKm: 5.0,
+    runners: [
+      { id: cryptoId(), name: '', timeStr: '' },
+      { id: cryptoId(), name: '', diffStr: '' }
+    ]
+  };
+
+  let saveTimer = null;
+  let suppressNextPoll = false;
+
+  function cryptoId(){
+    return 'r' + Math.random().toString(36).slice(2, 10);
+  }
+
+  // ---- time parsing / formatting ----
+  function parseTime(str){
+    if (str == null) return null;
+    str = String(str).trim();
+    if (str === '') return null;
+    const parts = str.split(':').map(s => s.trim());
+    if (parts.some(p => p === '' || isNaN(Number(p)))) return null;
+    let seconds = 0;
+    for (let i = 0; i < parts.length; i++){
+      seconds = seconds * 60 + parseFloat(parts[i]);
+    }
+    return seconds;
+  }
+
+  function formatTime(totalSeconds){
+    if (totalSeconds == null || isNaN(totalSeconds)) return '—';
+    const neg = totalSeconds < 0;
+    totalSeconds = Math.abs(totalSeconds);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const sStr = (Math.round(s * 10) / 10).toFixed(1).padStart(4, '0');
+    let out;
+    if (h > 0){
+      out = `${h}:${String(m).padStart(2,'0')}:${sStr}`;
+    } else {
+      out = `${m}:${sStr}`;
+    }
+    return (neg ? '-' : '') + out;
+  }
+
+  function toSigFig(num, sig){
+    if (num == null || isNaN(num)) return '—';
+    if (num === 0) return '0';
+    const d = Math.ceil(Math.log10(Math.abs(num)));
+    const power = sig - d;
+    const magnitude = Math.pow(10, power);
+    const rounded = Math.round(num * magnitude) / magnitude;
+    if (power > 0){
+      return rounded.toFixed(Math.max(power, 0));
+    }
+    return String(rounded);
+  }
+
+  // ---- storage ----
+  async function loadState(){
+    try {
+      const result = await window.storage.get(STORAGE_KEY, true);
+      if (result && result.value){
+        const parsed = JSON.parse(result.value);
+        if (parsed && Array.isArray(parsed.runners) && parsed.runners.length > 0){
+          state = parsed;
+        }
+      }
+    } catch (e) {
+      // no existing data yet, or a fetch error - keep local default
+      console.log('load info:', e);
+    }
+    render();
+  }
+
+  async function saveState(){
+    try {
+      const res = await window.storage.set(STORAGE_KEY, JSON.stringify(state), true);
+      if (!res){
+        setSyncStatus(false, 'Failed to save. please try again.');
+      } else {
+        setSyncStatus(true);
+      }
+    } catch (e) {
+      setSyncStatus(false, 'Save Error occured. Check your connection');
+    }
+  }
+
+  function scheduleSave(){
+    suppressNextPoll = true;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveState();
+    }, 450);
+  }
+
+  function setSyncStatus(ok, msg){
+    if (ok){
+      syncStatus.innerHTML = '<span class="dot"></span>共有ボード（全員が同じデータを見ています）';
+    } else {
+      syncStatus.innerHTML = '<span class="dot" style="background:#C94A0C;"></span>' + (msg || '同期エラー');
+    }
+  }
+
+  async function pollForUpdates(){
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    if (suppressNextPoll){ suppressNextPoll = false; return; }
+    try {
+      const result = await window.storage.get(STORAGE_KEY, true);
+      if (result && result.value){
+        const parsed = JSON.parse(result.value);
+        if (parsed && JSON.stringify(parsed) !== JSON.stringify(state)){
+          state = parsed;
+          render();
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // ---- computation ----
+  function computeRows(){
+    const distance = parseFloat(distanceInput.value) || parseFloat(state.distanceKm) || 0;
+    let cumulative = null;
+    return state.runners.map((r, i) => {
+      let totalSeconds;
+      if (i === 0){
+        totalSeconds = parseTime(r.timeStr);
+      } else {
+        const diffSeconds = parseTime(r.diffStr);
+        totalSeconds = (cumulative != null && diffSeconds != null) ? cumulative + diffSeconds : null;
+      }
+      cumulative = totalSeconds != null ? totalSeconds : cumulative;
+      const pace = (totalSeconds != null && distance > 0) ? (totalSeconds / 60) / distance : null;
+      return { ...r, totalSeconds, pace };
+    });
+  }
+
+  // ---- partial update (used while typing, so focus/cursor is never lost) ----
+  function refreshComputedCells(){
+    const rows = computeRows();
+    rows.forEach((r, i) => {
+      if (i > 0){
+        const timeCell = document.getElementById('time-cell-' + i);
+        if (timeCell) timeCell.textContent = formatTime(r.totalSeconds);
+      }
+      const paceCell = document.getElementById('pace-cell-' + i);
+      if (paceCell){
+        paceCell.innerHTML = r.pace != null
+          ? toSigFig(r.pace, 2) + '<span class="unit">min/km</span>'
+          : '—';
+      }
+    });
+  }
+
+  // ---- rendering ----
+  function render(){
+    distanceInput.value = state.distanceKm;
+    const rows = computeRows();
+    body.innerHTML = '';
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      if (i === 0) tr.className = 'leader';
+
+      const rankTd = document.createElement('td');
+      rankTd.className = 'rank';
+      rankTd.textContent = i + 1;
+      tr.appendChild(rankTd);
+
+      const nameTd = document.createElement('td');
+      nameTd.className = 'name-cell';
+      nameTd.setAttribute('data-label', '名前');
+      const nameInput = document.createElement('input');
+      nameInput.className = 'name-input';
+      nameInput.type = 'text';
+      nameInput.placeholder = i === 0 ? '1st Runner' : `${i + 1}`;
+      nameInput.value = r.name || '';
+      nameInput.addEventListener('input', (e) => {
+        state.runners[i].name = e.target.value;
+        scheduleSave();
+      });
+      nameTd.appendChild(nameInput);
+      tr.appendChild(nameTd);
+
+      const timeTd = document.createElement('td');
+      timeTd.setAttribute('data-label', 'トータルタイム');
+      if (i === 0){
+        timeTd.className = 'time-cell';
+        const timeInput = document.createElement('input');
+        timeInput.type = 'text';
+        timeInput.placeholder = 'Ex)18:32.5';
+        timeInput.value = r.timeStr || '';
+        timeInput.addEventListener('input', (e) => {
+          state.runners[0].timeStr = e.target.value;
+          scheduleSave();
+          refreshComputedCells();
+        });
+        timeTd.appendChild(timeInput);
+      } else {
+        timeTd.className = 'time-cell readonly';
+        timeTd.id = 'time-cell-' + i;
+        timeTd.textContent = formatTime(r.totalSeconds);
+      }
+      tr.appendChild(timeTd);
+
+      const diffTd = document.createElement('td');
+      diffTd.setAttribute('data-label', '差分');
+      diffTd.className = 'time-cell';
+      if (i === 0){
+        const span = document.createElement('span');
+        span.className = 'interval-label';
+        span.textContent = 'interval';
+        diffTd.appendChild(span);
+      } else {
+        const diffInput = document.createElement('input');
+        diffInput.type = 'text';
+        diffInput.placeholder = 'Ex)0:08.0';
+        diffInput.value = r.diffStr || '';
+        diffInput.addEventListener('input', (e) => {
+          state.runners[i].diffStr = e.target.value;
+          scheduleSave();
+          refreshComputedCells();
+        });
+        diffTd.appendChild(diffInput);
+      }
+      tr.appendChild(diffTd);
+
+      const paceTd = document.createElement('td');
+      paceTd.className = 'pace';
+      paceTd.id = 'pace-cell-' + i;
+      paceTd.setAttribute('data-label', '平均ペース');
+      if (r.pace != null){
+        paceTd.innerHTML = toSigFig(r.pace, 2) + '<span class="unit">min/km</span>';
+      } else {
+        paceTd.textContent = '—';
+      }
+      tr.appendChild(paceTd);
+
+      const removeTd = document.createElement('td');
+      removeTd.className = 'remove';
+      if (state.runners.length > 1){
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.innerHTML = '✕';
+        removeBtn.title = '削除';
+        removeBtn.addEventListener('click', () => {
+          state.runners.splice(i, 1);
+          scheduleSave();
+          render();
+        });
+        removeTd.appendChild(removeBtn);
+      }
+      tr.appendChild(removeTd);
+
+      body.appendChild(tr);
+    });
+  }
+
+  distanceInput.addEventListener('input', (e) => {
+    state.distanceKm = e.target.value;
+    scheduleSave();
+    refreshComputedCells();
+  });
+
+  addBtn.addEventListener('click', () => {
+    state.runners.push({ id: cryptoId(), name: '', diffStr: '' });
+    scheduleSave();
+    render();
+  });
+
+  refreshBtn.addEventListener('click', () => {
+    pollForUpdates();
+  });
+
+  loadState();
+  setInterval(pollForUpdates, 5000);
+})();
+</script>
+</body>
+</html>
